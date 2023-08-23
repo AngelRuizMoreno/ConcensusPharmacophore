@@ -6,8 +6,8 @@ __author__  = "https://github.com/AngelRuizMoreno"
 '''
 from importlib_resources import files
 
-__PHARMIT      = files("PyPharmer.bin").joinpath("pharmitserver")
-__PHARMIT_LIC  = files("PyPharmer.bin").joinpath("README")
+__PHARMIT      = files("conphar.bin").joinpath("pharmitserver")
+__PHARMIT_LIC  = files("conphar.bin").joinpath("README")
 
 
 ''' 

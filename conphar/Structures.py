@@ -16,7 +16,7 @@ def search_uniprot(query:str):
     This function uses the UniProt REST API to perform a text search on the UniProtKB data set and retrieve the entries that match the query. The function also allows to specify the fields to be returned and the format of the output. The function returns a pandas DataFrame with the results.
 
     Args:
-        query (str): A string containing the query to be searched in UniProtKB. The query can use UniProt's advanced search syntax[^1^][1].
+        query (str): A string containing the query to be searched in UniProtKB. The query can use UniProt's advanced search syntax.
 
     Returns:
         pd.DataFrame: A DataFrame with the columns corresponding to the fields specified in the code. The columns are renamed according to a dictionary defined in the code. The DataFrame is sorted by annotation score in descending order and has no duplicates.
