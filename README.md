@@ -21,6 +21,7 @@ ConPhar is reliant on a variety of academic software:
 - [Pharmer/Pharmit](https://pharmit.csb.pitt.edu/) 
 
 - pandas
+- pymol
 - plotly
 - seaborn
 - scikit-learn
@@ -32,9 +33,9 @@ pip install conphar
 ```
 
 ## Tutorials
-> [Ligand-Receptor pharmacophores](https://github.com/AngelRuizMoreno/ConcensusPharmacophore/master/tutorials/ReceptorLigandPharmacophores.ipynb)
+> [Ligand-Receptor pharmacophores](https://github.com/AngelRuizMoreno/ConcensusPharmacophore/blob/main/tutorials/ReceptorLigandPharmacophores.ipynb)
 
-> [Generate Consensus Pharmacophore](https://github.com/AngelRuizMoreno/ConcensusPharmacophore/master/tutorials/ConsensusPharmacophore.ipynb)
+> [Generate Consensus Pharmacophore](https://github.com/AngelRuizMoreno/ConcensusPharmacophore/blob/main/tutorials/ConsensusPharmacophore.ipynb)
 
 ## Citation
 
