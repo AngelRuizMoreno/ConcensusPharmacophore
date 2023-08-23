@@ -27,8 +27,6 @@ ConPhar is reliant on a variety of academic software:
 
 ## Installation 
 
-**1. Installingfrom PIP:**
-
 ```
 pip install conphar
 ```
