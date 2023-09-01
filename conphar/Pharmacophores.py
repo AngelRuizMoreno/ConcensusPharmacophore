@@ -10,14 +10,6 @@ __PHARMIT      = files("conphar.bin").joinpath("pharmitserver")
 __PHARMIT_LIC  = files("conphar.bin").joinpath("README")
 
 
-''' 
-################### TOOLBOX ###################
-'''
-
-__all__=
-['get_ligand_receptor_pharmacophore','get_molecule_pharmacophore','parse_json_pharmacophore','show_pharmacophoric_descriptors','save_pharmacophore_to_pymol','compute_concensus_pharmacophore']
-
-
 import os, subprocess, json
 
 import pandas as pd
@@ -34,6 +26,7 @@ from sklearn.preprocessing import normalize
 import numpy as np
 import seaborn as sns
 
+__all__=['get_ligand_receptor_pharmacophore','get_molecule_pharmacophore','parse_json_pharmacophore','show_pharmacophoric_descriptors','save_pharmacophore_to_pymol','compute_concensus_pharmacophore']
 
 def get_ligand_receptor_pharmacophore (receptor:str,ligand:str,out:str,out_format:str='json',cmd:str='pharma'):
     
@@ -217,7 +210,7 @@ def save_pharmacophore_to_pymol (table:pd.DataFrame,out_file:str='pharmacophore.
     Args:
         table (pd.DataFrame): A DataFrame with the columns 'name', 'center', 'radius', 'color', 'cluster', 'weight', 'balance', and 'svector' for each pharmacophore point.
         out_file (str, optional): The file name of the PyMOL session file to be written. Defaults to 'pharmacophore.pse'.
-        select (str, optional): A string indicating how to group the points in PyMOL. It can be 'cluster', 'concensus', or 'all'. Defaults to 'all'.
+        select (str, optional): A string indicating how to group the points in PyMOL. It can be 'concensus' or 'all'. Defaults to 'all'.
 
     Returns:
         None: The function does not return anything, but writes the PyMOL session file.
@@ -227,17 +220,7 @@ def save_pharmacophore_to_pymol (table:pd.DataFrame,out_file:str='pharmacophore.
         >>> save_pharmacophore_to_pymol(table, out_file='pharmacophore.pse', select='cluster')
         # A PyMOL session file with the pharmacophore points grouped by cluster is written.
     """
-    
-    if select=='cluster':
-        for point in table.index:
-            cmd.pseudoatom(object=int(table.loc[point,'cluster']),resn=table.loc[point,'name'],
-                               resi=point, chain='P', elem='PS',label=int(table.loc[point,'cluster']),
-                               vdw=table.loc[point,'radius'], hetatm=1, color=table.loc[point,'color'],b=table.loc[point,'weight'],
-                           q=table.loc[point,'balance'],pos=[table.loc[point,'x'],table.loc[point,'y'],table.loc[point,'z']])
-
-            cmd.group(table.loc[point,'name'], '*')
-    
-    elif select=='concensus':
+    if select=='concensus':
         for point in table.index:
             cmd.pseudoatom(object=table.loc[point,'name'],resn=table.loc[point,'name'],
                            resi=point, chain='P', elem='PS',label=table.loc[point,'name'],
@@ -287,6 +270,7 @@ def save_pharmacophore_to_json (table:pd.DataFrame,out_file:str='pharmacophore.j
     with open(out_file,'w') as f:
         f.write(data)
         
+
 def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descriptor:bool=True, out_folder:str='.', h_dist:float=0.17):
     """
     Computes the concensus pharmacophore from a table of 3D coordinates and features of molecular descriptors.
@@ -326,11 +310,11 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
             matrix=distance_matrix(x=table[['x','y','z']],y=table[['x','y','z']])
             dm = sch.distance.pdist(matrix)
             linkage = sch.linkage(dm, method='complete')
-            clusters = sch.fcluster(linkage, 0.17*dm.max(), 'distance')
+            clusters = sch.fcluster(linkage, h_dist*dm.max(), 'distance')
 
             table['cluster']=clusters
 
-
+            
             weight=[]
             for row in matrix:
                 weight.append(len([distance for distance in row if distance <= 1.5]))
@@ -338,7 +322,8 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
             table['weight']=weight
 
             table['balance']=normalize([weight], norm="l1")[0]
-                
+            
+            
         return linkage,matrix,table
         
     def __compute_center_of_mass_and_radius(table:pd.DataFrame):
@@ -353,6 +338,24 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
 
         return center_of_mass,radius 
     
+    def __save_pymol_cluster(table:pd.DataFrame,out_file:str='cluster.pse',cluster_color_map:dict={}):
+        for point in table.index:
+            cmd.pseudoatom(object=int(table.loc[point,'cluster']),resn=table.loc[point,'name'],
+                               resi=point, chain='P', elem='PS',label=int(table.loc[point,'cluster']),
+                               vdw=table.loc[point,'radius'], hetatm=1, color=table.loc[point,'color'],b=table.loc[point,'weight'],
+                           q=table.loc[point,'balance'],pos=[table.loc[point,'x'],table.loc[point,'y'],table.loc[point,'z']])
+
+            cmd.group(table.loc[point,'name'], '*')
+            
+        for clus_idx,color in cluster_color_map.items():
+            cmd.set_color(f"clus_{clus_idx}", color)
+            cmd.color(f"clus_{clus_idx}", clus_idx)
+        
+        cmd.show(representation='spheres')
+        cmd.center(selection='all')
+        cmd.save(out_file,format='pse')
+        cmd.remove('all')
+        cmd.reinitialize(what='everything')
         
     Concensus=pd.DataFrame()
     Links={}
@@ -360,17 +363,31 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
     index=1
     for group in Descriptors.groups:
         linkage,matrix,descriptor_cluster=__compute_cluster(Descriptors.get_group(group))
-        Links[group]={'matrix':matrix,'linkage':linkage}
+        Links[group]={'matrix':matrix,'linkage':linkage,'table':descriptor_cluster}
         
         if save_data_per_descriptor==True:
-            save_pharmacophore_to_pymol(table=descriptor_cluster,out_file=f"{out_folder}/{group}_clusters.pse",select='cluster')
             
-            fig=sns.clustermap (matrix,method='complete',figsize=(10,10),xticklabels=descriptor_cluster.index, yticklabels=descriptor_cluster.index,
-                                cmap='RdBu',cbar_kws=dict(label='Distance',shrink=1,orientation='vertical',spacing='uniform',pad=0.02),
-                                    row_linkage=linkage, col_linkage=linkage, rasterized=True)
             
-            fig.savefig(f"{out_folder}/{group}_clusters.png",dpi=300)
-        
+            
+            lut = dict(zip(descriptor_cluster.cluster.unique(), sns.color_palette('Set3',len(descriptor_cluster.cluster.unique()))))
+            row_colors = descriptor_cluster.cluster.map(lut).to_numpy()
+            
+            
+            
+
+            ax=sns.clustermap (matrix,method='complete',figsize=(6,6),xticklabels=0, yticklabels=0,
+                               cmap='binary_r',cbar_kws=dict(label='Distance',shrink=1,orientation='vertical',spacing='uniform',pad=0.02),
+                               row_linkage=linkage, col_linkage=linkage, rasterized=True,row_colors=row_colors,tree_kws=dict(linewidths=1))
+            
+            x0, _y0, _w, _h = ax.cbar_pos
+            ax.ax_cbar.set_position([0.1, 0.8, _w/1, _h/1.2])
+            ax.ax_cbar.set_ylabel('Distance Å',fontsize=10,fontweight='bold')
+            ax.ax_cbar.tick_params(axis='y', length=3,width=1,labelsize=10)
+            
+            ax.savefig(f"{out_folder}/{group}_clusters.svg",dpi=300,bbox_inches="tight")
+            
+            __save_pymol_cluster(table=descriptor_cluster,out_file=f"{out_folder}/{group}_clusters.pse",cluster_color_map=lut)
+            
         else:
             pass
         
@@ -386,7 +403,7 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
             Concensus.loc[index,'radius']=radius
             Concensus.loc[index,'color']=clus.loc[clus.index[0],'color']
             Concensus.loc[index,'weight']=int(len(clus.index))
-            Concensus.loc[index,'balance']=clus['balance'].mean()
+            Concensus.loc[index,'balance']=clus['balance'].sum()
             index=index+1
     
     return Concensus, Links
