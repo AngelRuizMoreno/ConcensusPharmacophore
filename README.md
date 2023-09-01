@@ -2,6 +2,10 @@
 
 [**Description**](#description) | [**Requirements**](#requirements) | [**Installation**](#installation) | [**Tutorials**](#tutorials) | [**Citation**](#citation) | [**License**](#license) | [**Information**](#information) | [**Disclaimer**](#disclaimer)
 
+
+[![DOI](https://zenodo.org/badge/680058699.svg)](https://zenodo.org/badge/latestdoi/680058699)
+
+
 ## Description
 
 A consensus pharmacophore is a set of properties shared by several active molecules that bind to the same target. It is composed of geometric elements such as points, spheres, vectors, or planes that represent different types of features such as hydrophobic regions, hydrogen bond donors or acceptors, aromatic rings, or positive or negative charges. It can be used to represent the fundamental properties of a molecular interaction and to direct the development of new compounds with comparable or improved activity.
@@ -21,6 +25,7 @@ ConPhar is reliant on a variety of academic software:
 - [Pharmer/Pharmit](https://pharmit.csb.pitt.edu/) 
 
 - pandas
+- pymol
 - plotly
 - seaborn
 - scikit-learn
@@ -32,15 +37,16 @@ pip install conphar
 ```
 
 ## Tutorials
-> [Ligand-Receptor pharmacophores](https://github.com/AngelRuizMoreno/ConcensusPharmacophore/master/tutorials/ReceptorLigandPharmacophores.ipynb)
+> [Ligand-Receptor pharmacophores](https://github.com/AngelRuizMoreno/ConcensusPharmacophore/blob/main/tutorials/ReceptorLigandPharmacophores.ipynb)
 
-> [Generate Consensus Pharmacophore](https://github.com/AngelRuizMoreno/ConcensusPharmacophore/master/tutorials/ConsensusPharmacophore.ipynb)
+> [Generate Consensus Pharmacophore](https://github.com/AngelRuizMoreno/ConcensusPharmacophore/blob/main/tutorials/ConsensusPharmacophore.ipynb)
 
 ## Citation
 
 If you use this software or its results in your research, publication, or project, please cite it as follows:
 
-> ConPhar: Tool for generation and analysis of concensus pharmacophore 
+> ConPhar: Tool for generation and analysis of concensus pharmacophore: [DOI: 10.5281/zenodo.8276506](https://zenodo.org/record/8276506)
+
 
 If you use pharmer for your work you must cite:
 
