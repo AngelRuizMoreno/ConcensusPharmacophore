@@ -7,8 +7,8 @@ here = os.path.abspath(os.path.dirname(__file__))
 with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
-VERSION = 'v0.1.0'
-DESCRIPTION = 'This library was developed to generate concensus pharmacophores from large datasets of ligands and ligand-protein complexes.'
+VERSION = 'v0.1.1'
+DESCRIPTION = 'PyPharmer'
 #LONG_DESCRIPTION = ''
 
 # Setting up
