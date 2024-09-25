@@ -7,8 +7,8 @@ here = os.path.abspath(os.path.dirname(__file__))
 with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
-VERSION = 'v0.1.1'
-DESCRIPTION = 'PyPharmer'
+VERSION = 'v0.1.2'
+DESCRIPTION = 'ConPhar'
 #LONG_DESCRIPTION = ''
 
 # Setting up
