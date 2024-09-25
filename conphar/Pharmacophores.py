@@ -271,7 +271,7 @@ def save_pharmacophore_to_json (table:pd.DataFrame,out_file:str='pharmacophore.j
         f.write(data)
         
 
-def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descriptor:bool=True, out_folder:str='.', h_dist:float=0.17):
+def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descriptor:bool=True, out_folder:str='.', h_dist:float=0.17,cmap_plots:str='binary_r'):
     """
     Computes the concensus pharmacophore from a table of 3D coordinates and features of molecular descriptors.
 
@@ -373,10 +373,8 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
             row_colors = descriptor_cluster.cluster.map(lut).to_numpy()
             
             
-            
-
             ax=sns.clustermap (matrix,method='complete',figsize=(6,6),xticklabels=0, yticklabels=0,
-                               cmap='binary_r',cbar_kws=dict(label='Distance',shrink=1,orientation='vertical',spacing='uniform',pad=0.02),
+                               cmap=cmap_plots,cbar_kws=dict(label='Distance',shrink=1,orientation='vertical',spacing='uniform',pad=0.02),
                                row_linkage=linkage, col_linkage=linkage, rasterized=True,row_colors=row_colors,tree_kws=dict(linewidths=1))
             
             x0, _y0, _w, _h = ax.cbar_pos
