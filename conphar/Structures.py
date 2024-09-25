@@ -140,7 +140,7 @@ def fetch_structure(target:str,target_chain:str,reference:str, reference_chain:s
 
     if extract_ligands:         
         cmd.remove(f"solvent or inorganic or resn PEG or resn DMS or resn GOL or resn FTM or (not alt ''+{target_chain})")
-        n_lig=cmd.select('Ligand', state=1, selection=(f'byres ((chain {target_chain} and (organic or hetatm)'))
+        n_lig=cmd.select('Ligand', state=1, selection=(f'byres chain {target_chain} and (organic or hetatm)'))
 
         data.loc[target,'lig_n_atoms']=n_lig
         
