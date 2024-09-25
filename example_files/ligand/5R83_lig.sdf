@@ -1,5 +1,5 @@
 target
-  PyMOL2.1          3D                             0
+  PyMOL3.0          3D                             0
 
  16 17  0  0  0  0  0  0  0  0999 V2000
     9.4094   -1.0606   22.3873 N   0  0  0  0  0  0  0  0  0  0  0  0
@@ -36,4 +36,97 @@ target
  14 15  4  0  0  0  0
   7 16  4  0  0  0  0
 M  END
+>  <pdb_header>
+HEADER    HYDROLASE/HYDROLASE INHIBITOR           03-MAR-20   XXXX              
+TITLE     PANDDA ANALYSIS GROUP DEPOSITION -- CRYSTAL STRUCTURE OF SARS-COV-2   
+TITLE    2 MAIN PROTEASE IN COMPLEX WITH Z44592329                              
+KEYWDS    SGC - DIAMOND I04-1 FRAGMENT SCREENING, PANDDA, XCHEMEXPLORER,        
+KEYWDS   2 HYDROLASE-HYDROLASE INHIBITOR COMPLEX                                
+EXPDTA    X-RAY DIFFRACTION                                                     
+AUTHOR    D.FEARON,A.J.POWELL,A.DOUANGAMATH,C.D.OWEN,C.WILD,T.KROJER,P.LUKACIK, 
+AUTHOR   2 C.M.STRAIN-DAMERELL,M.A.WALSH,F.VON DELFT                            
+JRNL        AUTH   A.DOUANGAMATH,D.FEARON,P.GEHRTZ,T.KROJER,P.LUKACIK,C.D.OWEN, 
+JRNL        AUTH 2 E.RESNICK,C.STRAIN-DAMERELL,A.AIMON,P.ABRANYI-BALOGH,        
+JRNL        AUTH 3 J.BRANDAO-NETO,A.CARBERY,G.DAVISON,A.DIAS,T.D.DOWNES,        
+JRNL        AUTH 4 L.DUNNETT,M.FAIRHEAD,J.D.FIRTH,S.P.JONES,A.KEELEY,           
+JRNL        AUTH 5 G.M.KESERU,H.F.KLEIN,M.P.MARTIN,M.E.M.NOBLE,P.O'BRIEN,       
+JRNL        AUTH 6 A.POWELL,R.N.REDDI,R.SKYNER,M.SNEE,M.J.WARING,C.WILD,        
+JRNL        AUTH 7 N.LONDON,F.VON DELFT,M.A.WALSH                               
+JRNL        TITL   CRYSTALLOGRAPHIC AND ELECTROPHILIC FRAGMENT SCREENING OF THE 
+JRNL        TITL 2 SARS-COV-2 MAIN PROTEASE.                                    
+JRNL        REF    NAT COMMUN                    V.  11  5047 2020              
+JRNL        REFN                   ESSN 2041-1723                               
+JRNL        PMID   33028810                                                     
+JRNL        DOI    10.1038/S41467-020-18709-W                                   
+SEQRES   1 A  306  SER GLY PHE ARG LYS MET ALA PHE PRO SER GLY LYS VAL          
+SEQRES   2 A  306  GLU GLY CYS MET VAL GLN VAL THR CYS GLY THR THR THR          
+SEQRES   3 A  306  LEU ASN GLY LEU TRP LEU ASP ASP VAL VAL TYR CYS PRO          
+SEQRES   4 A  306  ARG HIS VAL ILE CYS THR SER GLU ASP MET LEU ASN PRO          
+SEQRES   5 A  306  ASN TYR GLU ASP LEU LEU ILE ARG LYS SER ASN HIS ASN          
+SEQRES   6 A  306  PHE LEU VAL GLN ALA GLY ASN VAL GLN LEU ARG VAL ILE          
+SEQRES   7 A  306  GLY HIS SER MET GLN ASN CYS VAL LEU LYS LEU LYS VAL          
+SEQRES   8 A  306  ASP THR ALA ASN PRO LYS THR PRO LYS TYR LYS PHE VAL          
+SEQRES   9 A  306  ARG ILE GLN PRO GLY GLN THR PHE SER VAL LEU ALA CYS          
+SEQRES  10 A  306  TYR ASN GLY SER PRO SER GLY VAL TYR GLN CYS ALA MET          
+SEQRES  11 A  306  ARG PRO ASN PHE THR ILE LYS GLY SER PHE LEU ASN GLY          
+SEQRES  12 A  306  SER CYS GLY SER VAL GLY PHE ASN ILE ASP TYR ASP CYS          
+SEQRES  13 A  306  VAL SER PHE CYS TYR MET HIS HIS MET GLU LEU PRO THR          
+SEQRES  14 A  306  GLY VAL HIS ALA GLY THR ASP LEU GLU GLY ASN PHE TYR          
+SEQRES  15 A  306  GLY PRO PHE VAL ASP ARG GLN THR ALA GLN ALA ALA GLY          
+SEQRES  16 A  306  THR ASP THR THR ILE THR VAL ASN VAL LEU ALA TRP LEU          
+SEQRES  17 A  306  TYR ALA ALA VAL ILE ASN GLY ASP ARG TRP PHE LEU ASN          
+SEQRES  18 A  306  ARG PHE THR THR THR LEU ASN ASP PHE ASN LEU VAL ALA          
+SEQRES  19 A  306  MET LYS TYR ASN TYR GLU PRO LEU THR GLN ASP HIS VAL          
+SEQRES  20 A  306  ASP ILE LEU GLY PRO LEU SER ALA GLN THR GLY ILE ALA          
+SEQRES  21 A  306  VAL LEU ASP MET CYS ALA SER LEU LYS GLU LEU LEU GLN          
+SEQRES  22 A  306  ASN GLY MET ASN GLY ARG THR ILE LEU GLY SER ALA LEU          
+SEQRES  23 A  306  LEU GLU ASP GLU PHE THR PRO PHE ASP VAL VAL ARG GLN          
+SEQRES  24 A  306  CYS SER GLY VAL THR PHE GLN                                  
+HETNAM     DMS DIMETHYL SULFOXIDE                                               
+HETNAM     K0G N-PHENYL-N'-PYRIDIN-3-YLUREA                                     
+FORMUL   2  DMS    3(C2 H6 O S)                                                 
+FORMUL   5  K0G    C12 H11 N3 O                                                 
+FORMUL   6  HOH   *328(H2 O)                                                    
+HELIX    1 AA1 SER A   10  GLY A   15  1                                   6    
+HELIX    2 AA2 HIS A   41  CYS A   44  5                                   4    
+HELIX    3 AA3 GLU A   47  ASN A   51  5                                   5    
+HELIX    4 AA4 ASN A   53  ARG A   60  1                                   8    
+HELIX    5 AA5 LYS A   61  HIS A   64  5                                   4    
+HELIX    6 AA6 ILE A  200  ASN A  214  1                                  15    
+HELIX    7 AA7 THR A  226  TYR A  237  1                                  12    
+HELIX    8 AA8 THR A  243  LEU A  250  1                                   8    
+HELIX    9 AA9 LEU A  250  GLY A  258  1                                   9    
+HELIX   10 AB1 ALA A  260  GLY A  275  1                                  16    
+HELIX   11 AB2 THR A  292  GLY A  302  1                                  11    
+SHEET    1 AA1 7 VAL A  73  LEU A  75  0                                        
+SHEET    2 AA1 7 PHE A  66  ALA A  70 -1  N  VAL A  68   O  LEU A  75           
+SHEET    3 AA1 7 MET A  17  CYS A  22 -1  N  THR A  21   O  LEU A  67           
+SHEET    4 AA1 7 THR A  25  LEU A  32 -1  O  LEU A  27   N  VAL A  20           
+SHEET    5 AA1 7 VAL A  35  PRO A  39 -1  O  TYR A  37   N  LEU A  30           
+SHEET    6 AA1 7 VAL A  86  VAL A  91 -1  O  LEU A  89   N  VAL A  36           
+SHEET    7 AA1 7 VAL A  77  GLN A  83 -1  N  GLN A  83   O  VAL A  86           
+SHEET    1 AA2 5 LYS A 100  PHE A 103  0                                        
+SHEET    2 AA2 5 CYS A 156  GLU A 166  1  O  PHE A 159   N  LYS A 102           
+SHEET    3 AA2 5 VAL A 148  ASP A 153 -1  N  ASN A 151   O  SER A 158           
+SHEET    4 AA2 5 THR A 111  TYR A 118 -1  N  SER A 113   O  PHE A 150           
+SHEET    5 AA2 5 SER A 121  ALA A 129 -1  O  SER A 123   N  ALA A 116           
+SHEET    1 AA3 3 LYS A 100  PHE A 103  0                                        
+SHEET    2 AA3 3 CYS A 156  GLU A 166  1  O  PHE A 159   N  LYS A 102           
+SHEET    3 AA3 3 HIS A 172  THR A 175 -1  O  ALA A 173   N  MET A 165           
+SITE     1 AC1  8 GLN A  74  LEU A  75  ARG A  76  PHE A 223                    
+SITE     2 AC1  8 THR A 224  ASP A 263  HOH A 528  HOH A 608                    
+SITE     1 AC2  4 MET A   6  SER A 123  GLN A 127  ARG A 298                    
+SITE     1 AC3  4 GLY A  15  MET A  17  LYS A  97  HOH A 647                    
+SITE     1 AC4 11 MET A  49  PHE A 140  LEU A 141  ASN A 142                    
+SITE     2 AC4 11 HIS A 163  HIS A 164  MET A 165  GLU A 166                    
+SITE     3 AC4 11 ARG A 188  GLN A 189  HOH A 547                               
+CRYST1  112.267   52.583   44.535  90.00 102.95  90.00 C 1 2 1       4          
+ORIGX1      1.000000  0.000000  0.000000        0.00000                         
+ORIGX2      0.000000  1.000000  0.000000        0.00000                         
+ORIGX3      0.000000  0.000000  1.000000        0.00000                         
+SCALE1      0.008907  0.000000  0.002048        0.00000                         
+SCALE2      0.000000  0.019018  0.000000        0.00000                         
+SCALE3      0.000000  0.000000  0.023040        0.00000                         
+
+
 $$$$
