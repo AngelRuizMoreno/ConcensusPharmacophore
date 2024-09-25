@@ -139,8 +139,8 @@ def fetch_structure(target:str,target_chain:str,reference:str, reference_chain:s
     data=pd.DataFrame(arr.reshape(1,-1), columns=['refined_RMSD','refined_num_atoms','n_cycles','raw_RMSD','raw_num_atoms','aligment_score','n_residues_aligned'],index=[target])
 
     if extract_ligands:         
-        cmd.remove(f"solvent or inorganic or resn DMS or resn GOL or resn FTM or (not alt ''+{target_chain})")
-        n_lig=cmd.select('Ligand', state=1, selection=(f'byres ((chain {target_chain} and (resi 145 or resi 41) expand 10 and organic and not resn EDO or not chain {target_chain} and not chain B))'))
+        cmd.remove(f"solvent or inorganic or resn PEG or resn DMS or resn GOL or resn FTM or (not alt ''+{target_chain})")
+        n_lig=cmd.select('Ligand', state=1, selection=(f'byres ((chain {target_chain} and (organic or hetatm)'))
 
         data.loc[target,'lig_n_atoms']=n_lig
         
