@@ -10,21 +10,20 @@ __PHARMIT      = files("conphar.bin").joinpath("pharmitserver")
 __PHARMIT_LIC  = files("conphar.bin").joinpath("README")
 
 
-import os, subprocess, json
+import json
+import os
+import subprocess
 
+import numpy as np
 import pandas as pd
-
-
 import plotly.express as px
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
-from pymol import cmd
-
-from scipy.spatial import distance_matrix
 import scipy.cluster.hierarchy as sch
-from sklearn.preprocessing import normalize
-import numpy as np
 import seaborn as sns
+from pymol import cmd
+from scipy.spatial import distance_matrix
+from sklearn.preprocessing import normalize
 
 __all__=['get_ligand_receptor_pharmacophore','get_molecule_pharmacophore','parse_json_pharmacophore','show_pharmacophoric_descriptors','save_pharmacophore_to_pymol','compute_concensus_pharmacophore']
 
@@ -50,9 +49,11 @@ def get_ligand_receptor_pharmacophore (receptor:str,ligand:str,out:str,out_forma
         b'{"pharmacophore": [{"type": "hydrophobic", "center": [1.2, 3.4, 5.6], "radius": 1.5}, ...]}'
     """
     args = (__PHARMIT,"-cmd", cmd, "-receptor", receptor, "-in", ligand, "-out", f'{out}.{out_format}')
-    popen = subprocess.Popen(args, stdout=subprocess.PIPE)
+    popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     popen.wait()
-    output = popen.stdout.read()
+    
+    if popen.returncode != 0:
+        raise RuntimeError(f"PHARMIT failed with error code {popen.returncode}: {popen.stderr.read().decode()}")
     
 def get_molecule_pharmacophore (ligand:str,out:str,out_format:str='json',cmd:str='pharma'):
     """
@@ -74,9 +75,11 @@ def get_molecule_pharmacophore (ligand:str,out:str,out_format:str='json',cmd:str
         b'{"pharmacophore": [{"type": "hydrophobic", "center": [1.2, 3.4, 5.6], "radius": 1.5}, ...]}'
     """
     args = (__PHARMIT,"-cmd", cmd, "-in", ligand, "-out", f'{out}.{out_format}')
-    popen = subprocess.Popen(args, stdout=subprocess.PIPE)
+    popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     popen.wait()
     output = popen.stdout.read()
+    if popen.returncode != 0:
+        raise RuntimeError(f"PHARMIT failed with error code {popen.returncode}: {popen.stderr.read().decode()}")
     
 
 def parse_json_pharmacophore (json_file:str):
@@ -267,11 +270,13 @@ def save_pharmacophore_to_json (table:pd.DataFrame,out_file:str='pharmacophore.j
     data=f'"points":{table.to_json(orient="records")}'
     data="{"+data+"}"
 
-    with open(out_file,'w') as f:
-        f.write(data)
+    data = json.loads(data)
+    with open(out_file, 'w') as file:
+        json.dump(data, file, indent=4)
+
         
 
-def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descriptor:bool=True, out_folder:str='.', h_dist:float=0.17,cmap_plots:str='binary_r'):
+def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descriptor:bool=True, out_folder:str='.', h_dist:float=1.5,cmap_plots:str='binary_r'):
     """
     Computes the concensus pharmacophore from a table of 3D coordinates and features of molecular descriptors.
 
@@ -284,8 +289,9 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
     out_folder : str, optional
         The output folder where the data and plots will be saved. The default is '.'.
     h_dist : float, optional
-        The distance threshold for hierarchical clustering. The default is 0.17.
-
+        The distance threshold for hierarchical clustering. The default is 1.5 Å.
+    cmap_plots : str, optional
+        The colormap to use for the plots. The default is 'binary_r'.
     Returns
     -------
     Concensus : pd.DataFrame
@@ -305,23 +311,26 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
     
     def __compute_cluster(table:pd.DataFrame):
         
-        if len(table.index)>2:
-            
-            matrix=distance_matrix(x=table[['x','y','z']],y=table[['x','y','z']])
-            dm = sch.distance.pdist(matrix)
-            linkage = sch.linkage(dm, method='complete')
-            clusters = sch.fcluster(linkage, h_dist*dm.max(), 'distance')
+        if len(table.index) > 1:
+            dm_condensed = sch.distance.pdist(table[['x','y','z']])
+            matrix = sch.distance.squareform(dm_condensed)
+            linkage = sch.linkage(dm_condensed, method='complete')
+            table['cluster'] = sch.fcluster(linkage, h_dist, 'distance')
 
-            table['cluster']=clusters
-
-            
             weight=[]
             for row in matrix:
                 weight.append(len([distance for distance in row if distance <= 1.5]))
 
             table['weight']=weight
-
             table['balance']=normalize([weight], norm="l1")[0]
+        else:
+            print(f"Descriptor {table.name.values[0]} has only 1 point, skipping clustering")
+            table['cluster']=1
+            table['weight']=1
+            table['balance']=1
+            linkage=None
+            matrix=None
+            return linkage,matrix,table
             
             
         return linkage,matrix,table
@@ -329,7 +338,7 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
     def __compute_center_of_mass_and_radius(table:pd.DataFrame):
 
         center_of_mass = np.average([table['x'],table['y'],table['z']], axis=1, weights=table['weight'])
-        radius = max([np.linalg.norm(center_of_mass - np.array((table.loc[i,'x'],table.loc[i,'y'],table.loc[i,'z']))) for i in table.index])/2
+        radius = max([np.linalg.norm(center_of_mass - np.array((table.loc[i,'x'],table.loc[i,'y'],table.loc[i,'z']))) for i in table.index])
 
         if radius<1 and 'Hydrophobic' in list(table.name):
             radius=1
@@ -368,26 +377,25 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
         if save_data_per_descriptor==True:
             
             
-            
             lut = dict(zip(descriptor_cluster.cluster.unique(), sns.color_palette('Set3',len(descriptor_cluster.cluster.unique()))))
-            row_colors = descriptor_cluster.cluster.map(lut).to_numpy()
-            
-            
-            ax=sns.clustermap (matrix,method='complete',figsize=(6,6),xticklabels=0, yticklabels=0,
-                               cmap=cmap_plots,cbar_kws=dict(label='Distance',shrink=1,orientation='vertical',spacing='uniform',pad=0.02),
-                               row_linkage=linkage, col_linkage=linkage, rasterized=True,row_colors=row_colors,tree_kws=dict(linewidths=1))
-            
-            x0, _y0, _w, _h = ax.cbar_pos
-            ax.ax_cbar.set_position([0.1, 0.8, _w/1, _h/1.2])
-            ax.ax_cbar.set_ylabel('Distance Å',fontsize=10,fontweight='bold')
-            ax.ax_cbar.tick_params(axis='y', length=3,width=1,labelsize=10)
-            
-            ax.savefig(f"{out_folder}/{group}_clusters.svg",dpi=300,bbox_inches="tight")
+            if linkage is not None:
+                row_colors = descriptor_cluster.cluster.map(lut).to_numpy()
+                
+                
+                ax=sns.clustermap (matrix,method='complete',figsize=(6,6),xticklabels=0, yticklabels=0,
+                                cmap=cmap_plots,cbar_kws=dict(label='Distance',shrink=1,orientation='vertical',spacing='uniform',pad=0.02),
+                                row_linkage=linkage, col_linkage=linkage, rasterized=True,row_colors=row_colors,tree_kws=dict(linewidths=1))
+                
+                x0, _y0, _w, _h = ax.cbar_pos
+                ax.ax_cbar.set_position([0.1, 0.8, _w/1, _h/1.2])
+                ax.ax_cbar.set_ylabel('Distance Å',fontsize=10,fontweight='bold')
+                ax.ax_cbar.tick_params(axis='y', length=3,width=1,labelsize=10)
+                
+                ax.savefig(f"{out_folder}/{group}_clusters.svg",dpi=300,bbox_inches="tight")
+            else:
+                print(f"Descriptor {group} has only 1 point, not plotting clustermap")
             
             __save_pymol_cluster(table=descriptor_cluster,out_file=f"{out_folder}/{group}_clusters.pse",cluster_color_map=lut)
-            
-        else:
-            pass
         
         clusters=descriptor_cluster.groupby('cluster')
         for cg in clusters.groups:
