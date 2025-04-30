@@ -1,11 +1,12 @@
 __version__ = "0.1.0"
 __author__  = "https://github.com/AngelRuizMoreno"
 
-import os, requests
+import os
+from io import StringIO
+
 import numpy as np
 import pandas as pd
-
-from io import StringIO
+import requests
 from pymol import cmd
 
 __all__=['search_uniprot', 'fetch_structure']
@@ -147,17 +148,18 @@ def fetch_structure(target:str,target_chain:str,reference:str, reference_chain:s
     data=pd.DataFrame(arr.reshape(1,-1), columns=['refined_RMSD','refined_num_atoms','n_cycles','raw_RMSD','raw_num_atoms','aligment_score','n_residues_aligned'],index=[target])
 
     if extract_ligands:
-        remove_command = f"solvent or inorganic or resn PEG or resn DMS or resn GOL or resn FTM or (not alt ''+{target_chain})"
+        remove_command = f"resn PEG or resn DMS or resn GOL or resn FTM or (not alt ''+A)"
         for r in remove:
             remove_command += f" or resn {r}"
         cmd.remove(remove_command)
-        n_lig=cmd.select('Ligand', state=1, selection=(f'byres chain {target_chain} and (organic or hetatm)'))
+        n_lig=cmd.select('Ligand', state=1, selection=(f'byres chain {target_chain} and (organic or hetatm) and not (inorganic or solvent)'))
 
         data.loc[target,'lig_n_atoms']=n_lig
         
         cmd.save(f"{output_ligand}/{target}_lig.sdf",selection='Ligand',format='sdf')
 
-        cmd.remove('solvent or inorganic or organic')
+        # keep solvent and inorganic atoms in binding site
+        cmd.remove(f"((solvent or inorganic) and not (byres (target within 5 of Ligand))) or Ligand")
         cmd.save(f"{output_receptor}/{target}_{target_chain}.pdb",selection='target',format='pdb')
 
     else:
