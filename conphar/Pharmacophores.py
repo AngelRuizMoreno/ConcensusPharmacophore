@@ -22,7 +22,6 @@ import plotly.graph_objects as go
 import scipy.cluster.hierarchy as sch
 import seaborn as sns
 from pymol import cmd
-from scipy.spatial import distance_matrix
 from sklearn.preprocessing import normalize
 
 __all__=['get_ligand_receptor_pharmacophore','get_molecule_pharmacophore','parse_json_pharmacophore','show_pharmacophoric_descriptors','save_pharmacophore_to_pymol','compute_concensus_pharmacophore']
@@ -50,8 +49,8 @@ def get_ligand_receptor_pharmacophore (receptor:str,ligand:str,out:str,out_forma
     """
     args = (__PHARMIT,"-cmd", cmd, "-receptor", receptor, "-in", ligand, "-out", f'{out}.{out_format}')
     popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    popen.wait()
-    
+    stdout, stderr = popen.communicate()
+
     if popen.returncode != 0:
         raise RuntimeError(f"PHARMIT failed with error code {popen.returncode}: {popen.stderr.read().decode()}")
     
@@ -74,13 +73,13 @@ def get_molecule_pharmacophore (ligand:str,out:str,out_format:str='json',cmd:str
         >>> get_molecule_pharmacophore('ligand.sdf', 'pharmacophore')
         b'{"pharmacophore": [{"type": "hydrophobic", "center": [1.2, 3.4, 5.6], "radius": 1.5}, ...]}'
     """
-    args = (__PHARMIT,"-cmd", cmd, "-in", ligand, "-out", f'{out}.{out_format}')
+    args = (__PHARMIT, "-cmd", cmd, "-in", ligand, "-out", f"{out}.{out_format}")
     popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    popen.wait()
-    output = popen.stdout.read()
+    stdout, stderr = popen.communicate()
     if popen.returncode != 0:
-        raise RuntimeError(f"PHARMIT failed with error code {popen.returncode}: {popen.stderr.read().decode()}")
-    
+        raise RuntimeError(
+            f"PHARMIT failed with error code {popen.returncode}: {popen.stderr.read().decode()}"
+        )
 
 def parse_json_pharmacophore (json_file:str):
     """Parse a JSON file containing a pharmacophore model.
@@ -316,43 +315,49 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
             matrix = sch.distance.squareform(dm_condensed)
             linkage = sch.linkage(dm_condensed, method='complete')
             table['cluster'] = sch.fcluster(linkage, h_dist, 'distance')
-
-            weight=[]
-            for row in matrix:
-                weight.append(len([distance for distance in row if distance <= 1.5]))
-
-            table['weight']=weight
-            table['balance']=normalize([weight], norm="l1")[0]
         else:
-            print(f"Descriptor {table.name.values[0]} has only 1 point, skipping clustering")
-            table['cluster']=1
-            table['weight']=1
-            table['balance']=1
-            linkage=None
-            matrix=None
-            return linkage,matrix,table
-            
-            
-        return linkage,matrix,table
-        
-    def __compute_center_of_mass_and_radius(table:pd.DataFrame):
+            print(
+                f"Descriptor {table.name.values[0]} has only 1 point, skipping clustering"
+            )
+            table["cluster"] = 1
+            linkage = None
+            matrix = None
+            return linkage, matrix, table
 
-        center_of_mass = np.average([table['x'],table['y'],table['z']], axis=1, weights=table['weight'])
-        radius = max([np.linalg.norm(center_of_mass - np.array((table.loc[i,'x'],table.loc[i,'y'],table.loc[i,'z']))) for i in table.index])
+        return linkage, matrix, table
 
-        if radius<1 and 'Hydrophobic' in list(table.name):
-            radius=1
-        elif radius<0.5 and 'Hydrophobic' not in list(table.name):
-            radius=0.5
+    def __compute_center_of_mass_and_radius(table: pd.DataFrame):
 
-        return center_of_mass,radius 
-    
+        center_of_mass = np.average([table["x"], table["y"], table["z"]], axis=1)
+        # Maximum distance from the center of mass + the default radius of 1/0.5
+        if "Hydrophobic" in list(table.name):
+            radius = max([np.linalg.norm(center_of_mass - np.array((table.loc[i, "x"], table.loc[i, "y"], table.loc[i, "z"]))) + 1 for i in table.index])
+        else:
+            radius = max([np.linalg.norm(center_of_mass - np.array((table.loc[i, "x"], table.loc[i, "y"], table.loc[i, "z"]))) + 0.5 for i in table.index])
+
+        return center_of_mass, radius
+
+    def __get_cluster_variance(table: pd.DataFrame, center_of_mass: np.ndarray):
+        """Compute the variance of the cluster points.
+
+        Args:
+            table (pd.DataFrame): DataFrame containing the cluster points.
+            center_of_mass (np.ndarray): The center of mass of the cluster.
+
+        Returns:
+            float: The inertia of the cluster.
+        """
+        distances = np.linalg.norm(
+            table[["x", "y", "z"]].values - center_of_mass, axis=1
+        )
+        return np.mean(np.square(distances))
+
     def __save_pymol_cluster(table:pd.DataFrame,out_file:str='cluster.pse',cluster_color_map:dict={}):
         for point in table.index:
             cmd.pseudoatom(object=int(table.loc[point,'cluster']),resn=table.loc[point,'name'],
                                resi=point, chain='P', elem='PS',label=int(table.loc[point,'cluster']),
                                vdw=table.loc[point,'radius'], hetatm=1, color=table.loc[point,'color'],b=table.loc[point,'weight'],
-                           q=table.loc[point,'balance'],pos=[table.loc[point,'x'],table.loc[point,'y'],table.loc[point,'z']])
+                           q=table.loc[point,'variance'],pos=[table.loc[point,'x'],table.loc[point,'y'],table.loc[point,'z']])
 
             cmd.group(table.loc[point,'name'], '*')
             
@@ -409,7 +414,7 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
             Concensus.loc[index,'radius']=radius
             Concensus.loc[index,'color']=clus.loc[clus.index[0],'color']
             Concensus.loc[index,'weight']=int(len(clus.index))
-            Concensus.loc[index,'balance']=clus['balance'].sum()
+            Concensus.loc[index, 'variance'] = __get_cluster_variance(clus, center_of_mass)
             index=index+1
     
     return Concensus, Links
