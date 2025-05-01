@@ -49,7 +49,7 @@ def get_ligand_receptor_pharmacophore (receptor:str,ligand:str,out:str,out_forma
     """
     args = (__PHARMIT,"-cmd", cmd, "-receptor", receptor, "-in", ligand, "-out", f'{out}.{out_format}')
     popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = popen.communicate()
+    popen.wait()
 
     if popen.returncode != 0:
         raise RuntimeError(f"PHARMIT failed with error code {popen.returncode}: {popen.stderr.read().decode()}")
@@ -75,7 +75,8 @@ def get_molecule_pharmacophore (ligand:str,out:str,out_format:str='json',cmd:str
     """
     args = (__PHARMIT, "-cmd", cmd, "-in", ligand, "-out", f"{out}.{out_format}")
     popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = popen.communicate()
+    popen.wait()
+    
     if popen.returncode != 0:
         raise RuntimeError(
             f"PHARMIT failed with error code {popen.returncode}: {popen.stderr.read().decode()}"
@@ -210,7 +211,7 @@ def save_pharmacophore_to_pymol (table:pd.DataFrame,out_file:str='pharmacophore.
     This function uses the PyMOL command line interface to create pseudoatoms for each pharmacophore point and save them to a PyMOL session file. The function also allows to group the points by cluster, concensus, or name.
 
     Args:
-        table (pd.DataFrame): A DataFrame with the columns 'name', 'center', 'radius', 'color', 'cluster', 'weight', 'balance', and 'svector' for each pharmacophore point.
+        table (pd.DataFrame): A DataFrame with the columns 'name', 'center', 'radius', 'color', 'cluster', 'weight', 'variance', and 'svector' for each pharmacophore point.
         out_file (str, optional): The file name of the PyMOL session file to be written. Defaults to 'pharmacophore.pse'.
         select (str, optional): A string indicating how to group the points in PyMOL. It can be 'concensus' or 'all'. Defaults to 'all'.
 
@@ -227,7 +228,7 @@ def save_pharmacophore_to_pymol (table:pd.DataFrame,out_file:str='pharmacophore.
             cmd.pseudoatom(object=table.loc[point,'name'],resn=table.loc[point,'name'],
                            resi=point, chain='P', elem='PS',label=table.loc[point,'name'],
                            vdw=table.loc[point,'radius'], hetatm=1, color=table.loc[point,'color'],b=table.loc[point,'weight'],
-                           q=table.loc[point,'balance'],pos=[table.loc[point,'x'],table.loc[point,'y'],table.loc[point,'z']])
+                           q=table.loc[point,'variance'],pos=[table.loc[point,'x'],table.loc[point,'y'],table.loc[point,'z']])
             
             cmd.group('Concensus', '*')
         
@@ -254,7 +255,7 @@ def save_pharmacophore_to_json (table:pd.DataFrame,out_file:str='pharmacophore.j
     This function converts a pandas DataFrame containing the pharmacophore points to a JSON format and writes it to a file. The JSON format is compatible with the PHARMIT tool for pharmacophore-based virtual screening.
 
     Args:
-        table (pd.DataFrame): A DataFrame with the columns 'name', 'center', 'radius', and optionally 'color', 'cluster', 'weight', 'balance', and 'svector' for each pharmacophore point.
+        table (pd.DataFrame): A DataFrame with the columns 'name', 'center', 'radius', and optionally 'color', 'cluster', 'weight', 'variance', and 'svector' for each pharmacophore point.
         out_file (str, optional): The file name of the JSON file to be written. Defaults to 'pharmacophore.json'.
 
     Returns:
@@ -294,7 +295,7 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
     Returns
     -------
     Concensus : pd.DataFrame
-        A pandas dataframe containing the name, cluster, x, y, z, radius, color, weight and balance columns of the concensus pharmacophore.
+        A pandas dataframe containing the name, cluster, x, y, z, radius, color, weight and variance columns of the concensus pharmacophore.
     Links : dict
         A dictionary containing the distance matrix and linkage matrix for each descriptor cluster.
     
@@ -303,7 +304,7 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
     >>> table = pd.read_csv('example.csv')
     >>> Concensus, Links = compute_concensus_pharmacophore(table)
     >>> Concensus
-              name  cluster         x         y         z  radius  color  weight   balance
+              name  cluster         x         y         z  radius  color  weight   variance
     1  Hydrophobic        1 -0.063333 -0.063333 -0.063333     1.0      1       3  0.333333
     2   Donor_Acceptor        1 -0.063333 -0.063333 -0.063333     0.5      2       3  0.333333
     """
@@ -379,6 +380,28 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
         linkage,matrix,descriptor_cluster=__compute_cluster(Descriptors.get_group(group))
         Links[group]={'matrix':matrix,'linkage':linkage,'table':descriptor_cluster}
         
+        clusters=descriptor_cluster.groupby('cluster')
+        for cg in clusters.groups:
+            clus=clusters.get_group(cg)
+            center_of_mass,radius=__compute_center_of_mass_and_radius(clus)
+            Concensus.loc[index,'name']=group
+            Concensus.loc[index,'cluster']=cg
+            Concensus.loc[index,'x']=center_of_mass[0]
+            Concensus.loc[index,'y']=center_of_mass[1]
+            Concensus.loc[index,'z']=center_of_mass[2]
+            Concensus.loc[index,'radius']=radius
+            Concensus.loc[index,'color']=clus.loc[clus.index[0],'color']
+            Concensus.loc[index,'weight']=int(len(clus.index))
+            Concensus.loc[index, 'variance'] = __get_cluster_variance(clus, center_of_mass)
+            index=index+1
+            
+            # Aggregate Concensus to get one weight and variance per cluster
+            agg_data = Concensus.groupby('cluster')[['weight', 'variance']].first()
+
+            # Now map these to descriptor_cluster
+            descriptor_cluster['weight'] = descriptor_cluster['cluster'].map(agg_data['weight'])
+            descriptor_cluster['variance'] = descriptor_cluster['cluster'].map(agg_data['variance'])
+        
         if save_data_per_descriptor==True:
             
             
@@ -401,20 +424,5 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
                 print(f"Descriptor {group} has only 1 point, not plotting clustermap")
             
             __save_pymol_cluster(table=descriptor_cluster,out_file=f"{out_folder}/{group}_clusters.pse",cluster_color_map=lut)
-        
-        clusters=descriptor_cluster.groupby('cluster')
-        for cg in clusters.groups:
-            clus=clusters.get_group(cg)
-            center_of_mass,radius=__compute_center_of_mass_and_radius(clus)
-            Concensus.loc[index,'name']=group
-            Concensus.loc[index,'cluster']=cg
-            Concensus.loc[index,'x']=center_of_mass[0]
-            Concensus.loc[index,'y']=center_of_mass[1]
-            Concensus.loc[index,'z']=center_of_mass[2]
-            Concensus.loc[index,'radius']=radius
-            Concensus.loc[index,'color']=clus.loc[clus.index[0],'color']
-            Concensus.loc[index,'weight']=int(len(clus.index))
-            Concensus.loc[index, 'variance'] = __get_cluster_variance(clus, center_of_mass)
-            index=index+1
     
     return Concensus, Links
