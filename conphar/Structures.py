@@ -159,7 +159,7 @@ def fetch_structure(target:str,target_chain:str,reference:str, reference_chain:s
         cmd.save(f"{output_ligand}/{target}_lig.sdf",selection='Ligand',format='sdf')
 
         # keep solvent and inorganic atoms in binding site
-        cmd.remove(f"((solvent or inorganic) and not (byres (target within 5 of Ligand))) or Ligand")
+        cmd.remove(f"((solvent or inorganic) and not (byres (target within 5 of Ligand))) or Ligand or not (target and chain {target_chain})")
         cmd.save(f"{output_receptor}/{target}_{target_chain}.pdb",selection='target',format='pdb')
 
     else:
