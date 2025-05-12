@@ -276,7 +276,7 @@ def save_pharmacophore_to_json (table:pd.DataFrame,out_file:str='pharmacophore.j
 
         
 
-def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descriptor:bool=True, out_folder:str='.', h_dist:float=1.5,cmap_plots:str='binary_r'):
+def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descriptor:bool=True, out_folder:str='.', h_dist:float=1.5,cmap_plots:str='binary_r', feature_size:dict|None=None, method:str='complete'):
     """
     Computes the concensus pharmacophore from a table of 3D coordinates and features of molecular descriptors.
 
@@ -292,6 +292,13 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
         The distance threshold for hierarchical clustering. The default is 1.5 Å.
     cmap_plots : str, optional
         The colormap to use for the plots. The default is 'binary_r'.
+    feature_size : dict, optional
+        A dictionary containing the size of the features for each descriptor type.
+        The default is 1 for Hydrophobic and 0.5 for all other descriptors.
+    method : str, optional
+        The method to use for hierarchical clustering. The default is 'complete'.
+        Other options are 'single', 'average', 'weighted', 'centroid', 'median', and 'ward'.
+        See scipy.cluster.hierarchy.linkage for more details.
     Returns
     -------
     Concensus : pd.DataFrame
@@ -309,12 +316,12 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
     2   Donor_Acceptor        1 -0.063333 -0.063333 -0.063333     0.5      2       3  0.333333
     """
     
-    def __compute_cluster(table:pd.DataFrame):
+    def __compute_cluster(table:pd.DataFrame, method='complete'):
         
         if len(table.index) > 1:
             dm_condensed = sch.distance.pdist(table[['x','y','z']])
             matrix = sch.distance.squareform(dm_condensed)
-            linkage = sch.linkage(dm_condensed, method='complete')
+            linkage = sch.linkage(dm_condensed, method=method)
             table['cluster'] = sch.fcluster(linkage, h_dist, 'distance')
         else:
             print(
@@ -330,11 +337,17 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
     def __compute_center_of_mass_and_radius(table: pd.DataFrame):
 
         center_of_mass = np.average([table["x"], table["y"], table["z"]], axis=1)
-        # Maximum distance from the center of mass + the default radius of 1/0.5
-        if "Hydrophobic" in list(table.name):
-            radius = max([np.linalg.norm(center_of_mass - np.array((table.loc[i, "x"], table.loc[i, "y"], table.loc[i, "z"]))) + 1 for i in table.index])
+        
+        if feature_size is not None:
+            if table.name.values[0] not in feature_size:
+                print(f"Descriptor {table.name.values[0]} not found in feature_size, using 0.5 A as default")
+            desc_radius = feature_size.get(table.name.values[0], 0.5)
         else:
-            radius = max([np.linalg.norm(center_of_mass - np.array((table.loc[i, "x"], table.loc[i, "y"], table.loc[i, "z"]))) + 0.5 for i in table.index])
+            desc_radius = {"Hydrophobic": 1}.get(table.name.values[0], 0.5)
+            
+        
+        # Maximum distance from the center of mass + the radius of the descriptor
+        radius = max([np.linalg.norm(center_of_mass - np.array((table.loc[i, "x"], table.loc[i, "y"], table.loc[i, "z"]))) + desc_radius for i in table.index])
 
         return center_of_mass, radius
 
@@ -377,7 +390,7 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
     Descriptors=table.groupby('name')
     index=1
     for group in Descriptors.groups:
-        linkage,matrix,descriptor_cluster=__compute_cluster(Descriptors.get_group(group))
+        linkage,matrix,descriptor_cluster=__compute_cluster(Descriptors.get_group(group), method)
         Links[group]={'matrix':matrix,'linkage':linkage,'table':descriptor_cluster}
         
         clusters=descriptor_cluster.groupby('cluster')
