@@ -10,21 +10,19 @@ __PHARMIT      = files("conphar.bin").joinpath("pharmitserver")
 __PHARMIT_LIC  = files("conphar.bin").joinpath("README")
 
 
-import os, subprocess, json
+import json
+import os
+import subprocess
 
+import numpy as np
 import pandas as pd
-
-
 import plotly.express as px
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
-from pymol import cmd
-
-from scipy.spatial import distance_matrix
 import scipy.cluster.hierarchy as sch
-from sklearn.preprocessing import normalize
-import numpy as np
 import seaborn as sns
+from pymol import cmd
+from sklearn.preprocessing import normalize
 
 __all__=['get_ligand_receptor_pharmacophore','get_molecule_pharmacophore','parse_json_pharmacophore','show_pharmacophoric_descriptors','save_pharmacophore_to_pymol','compute_concensus_pharmacophore']
 
@@ -50,9 +48,11 @@ def get_ligand_receptor_pharmacophore (receptor:str,ligand:str,out:str,out_forma
         b'{"pharmacophore": [{"type": "hydrophobic", "center": [1.2, 3.4, 5.6], "radius": 1.5}, ...]}'
     """
     args = (__PHARMIT,"-cmd", cmd, "-receptor", receptor, "-in", ligand, "-out", f'{out}.{out_format}')
-    popen = subprocess.Popen(args, stdout=subprocess.PIPE)
+    popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     popen.wait()
-    output = popen.stdout.read()
+
+    if popen.returncode != 0:
+        raise RuntimeError(f"PHARMIT failed with error code {popen.returncode}: {popen.stderr.read().decode()}")
     
 def get_molecule_pharmacophore (ligand:str,out:str,out_format:str='json',cmd:str='pharma'):
     """
@@ -73,11 +73,14 @@ def get_molecule_pharmacophore (ligand:str,out:str,out_format:str='json',cmd:str
         >>> get_molecule_pharmacophore('ligand.sdf', 'pharmacophore')
         b'{"pharmacophore": [{"type": "hydrophobic", "center": [1.2, 3.4, 5.6], "radius": 1.5}, ...]}'
     """
-    args = (__PHARMIT,"-cmd", cmd, "-in", ligand, "-out", f'{out}.{out_format}')
-    popen = subprocess.Popen(args, stdout=subprocess.PIPE)
+    args = (__PHARMIT, "-cmd", cmd, "-in", ligand, "-out", f"{out}.{out_format}")
+    popen = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     popen.wait()
-    output = popen.stdout.read()
     
+    if popen.returncode != 0:
+        raise RuntimeError(
+            f"PHARMIT failed with error code {popen.returncode}: {popen.stderr.read().decode()}"
+        )
 
 def parse_json_pharmacophore (json_file:str):
     """Parse a JSON file containing a pharmacophore model.
@@ -208,7 +211,7 @@ def save_pharmacophore_to_pymol (table:pd.DataFrame,out_file:str='pharmacophore.
     This function uses the PyMOL command line interface to create pseudoatoms for each pharmacophore point and save them to a PyMOL session file. The function also allows to group the points by cluster, concensus, or name.
 
     Args:
-        table (pd.DataFrame): A DataFrame with the columns 'name', 'center', 'radius', 'color', 'cluster', 'weight', 'balance', and 'svector' for each pharmacophore point.
+        table (pd.DataFrame): A DataFrame with the columns 'name', 'center', 'radius', 'color', 'cluster', 'weight', 'variance', and 'svector' for each pharmacophore point.
         out_file (str, optional): The file name of the PyMOL session file to be written. Defaults to 'pharmacophore.pse'.
         select (str, optional): A string indicating how to group the points in PyMOL. It can be 'concensus' or 'all'. Defaults to 'all'.
 
@@ -225,7 +228,7 @@ def save_pharmacophore_to_pymol (table:pd.DataFrame,out_file:str='pharmacophore.
             cmd.pseudoatom(object=table.loc[point,'name'],resn=table.loc[point,'name'],
                            resi=point, chain='P', elem='PS',label=table.loc[point,'name'],
                            vdw=table.loc[point,'radius'], hetatm=1, color=table.loc[point,'color'],b=table.loc[point,'weight'],
-                           q=table.loc[point,'balance'],pos=[table.loc[point,'x'],table.loc[point,'y'],table.loc[point,'z']])
+                           q=table.loc[point,'variance'],pos=[table.loc[point,'x'],table.loc[point,'y'],table.loc[point,'z']])
             
             cmd.group('Concensus', '*')
         
@@ -252,7 +255,7 @@ def save_pharmacophore_to_json (table:pd.DataFrame,out_file:str='pharmacophore.j
     This function converts a pandas DataFrame containing the pharmacophore points to a JSON format and writes it to a file. The JSON format is compatible with the PHARMIT tool for pharmacophore-based virtual screening.
 
     Args:
-        table (pd.DataFrame): A DataFrame with the columns 'name', 'center', 'radius', and optionally 'color', 'cluster', 'weight', 'balance', and 'svector' for each pharmacophore point.
+        table (pd.DataFrame): A DataFrame with the columns 'name', 'center', 'radius', and optionally 'color', 'cluster', 'weight', 'variance', and 'svector' for each pharmacophore point.
         out_file (str, optional): The file name of the JSON file to be written. Defaults to 'pharmacophore.json'.
 
     Returns:
@@ -267,11 +270,13 @@ def save_pharmacophore_to_json (table:pd.DataFrame,out_file:str='pharmacophore.j
     data=f'"points":{table.to_json(orient="records")}'
     data="{"+data+"}"
 
-    with open(out_file,'w') as f:
-        f.write(data)
+    data = json.loads(data)
+    with open(out_file, 'w') as file:
+        json.dump(data, file, indent=4)
+
         
 
-def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descriptor:bool=True, out_folder:str='.', h_dist:float=0.17,cmap_plots:str='binary_r'):
+def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descriptor:bool=True, out_folder:str='.', h_dist:float=1.5,cmap_plots:str='binary_r', feature_size:dict|None=None, method:str='complete'):
     """
     Computes the concensus pharmacophore from a table of 3D coordinates and features of molecular descriptors.
 
@@ -284,12 +289,20 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
     out_folder : str, optional
         The output folder where the data and plots will be saved. The default is '.'.
     h_dist : float, optional
-        The distance threshold for hierarchical clustering. The default is 0.17.
-
+        The distance threshold for hierarchical clustering. The default is 1.5 Å.
+    cmap_plots : str, optional
+        The colormap to use for the plots. The default is 'binary_r'.
+    feature_size : dict, optional
+        A dictionary containing the size of the features for each descriptor type.
+        The default is 1 for Hydrophobic and 0.5 for all other descriptors.
+    method : str, optional
+        The method to use for hierarchical clustering. The default is 'complete'.
+        Other options are 'single', 'average', 'weighted', 'centroid', 'median', and 'ward'.
+        See scipy.cluster.hierarchy.linkage for more details.
     Returns
     -------
     Concensus : pd.DataFrame
-        A pandas dataframe containing the name, cluster, x, y, z, radius, color, weight and balance columns of the concensus pharmacophore.
+        A pandas dataframe containing the name, cluster, x, y, z, radius, color, weight and variance columns of the concensus pharmacophore.
     Links : dict
         A dictionary containing the distance matrix and linkage matrix for each descriptor cluster.
     
@@ -298,52 +311,67 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
     >>> table = pd.read_csv('example.csv')
     >>> Concensus, Links = compute_concensus_pharmacophore(table)
     >>> Concensus
-              name  cluster         x         y         z  radius  color  weight   balance
+              name  cluster         x         y         z  radius  color  weight   variance
     1  Hydrophobic        1 -0.063333 -0.063333 -0.063333     1.0      1       3  0.333333
     2   Donor_Acceptor        1 -0.063333 -0.063333 -0.063333     0.5      2       3  0.333333
     """
     
-    def __compute_cluster(table:pd.DataFrame):
+    def __compute_cluster(table:pd.DataFrame, method='complete'):
         
-        if len(table.index)>2:
-            
-            matrix=distance_matrix(x=table[['x','y','z']],y=table[['x','y','z']])
-            dm = sch.distance.pdist(matrix)
-            linkage = sch.linkage(dm, method='complete')
-            clusters = sch.fcluster(linkage, h_dist*dm.max(), 'distance')
+        if len(table.index) > 1:
+            dm_condensed = sch.distance.pdist(table[['x','y','z']])
+            matrix = sch.distance.squareform(dm_condensed)
+            linkage = sch.linkage(dm_condensed, method=method)
+            table['cluster'] = sch.fcluster(linkage, h_dist, 'distance')
+        else:
+            print(
+                f"Descriptor {table.name.values[0]} has only 1 point, skipping clustering"
+            )
+            table["cluster"] = 1
+            linkage = None
+            matrix = None
+            return linkage, matrix, table
 
-            table['cluster']=clusters
+        return linkage, matrix, table
 
-            
-            weight=[]
-            for row in matrix:
-                weight.append(len([distance for distance in row if distance <= 1.5]))
+    def __compute_center_of_mass_and_radius(table: pd.DataFrame):
 
-            table['weight']=weight
-
-            table['balance']=normalize([weight], norm="l1")[0]
-            
-            
-        return linkage,matrix,table
+        center_of_mass = np.average([table["x"], table["y"], table["z"]], axis=1)
         
-    def __compute_center_of_mass_and_radius(table:pd.DataFrame):
+        if feature_size is not None:
+            if table.name.values[0] not in feature_size:
+                print(f"Descriptor {table.name.values[0]} not found in feature_size, using 0.5 A as default")
+            desc_radius = feature_size.get(table.name.values[0], 0.5)
+        else:
+            desc_radius = {"Hydrophobic": 1}.get(table.name.values[0], 0.5)
+            
+        
+        # Maximum distance from the center of mass + the radius of the descriptor
+        radius = max([np.linalg.norm(center_of_mass - np.array((table.loc[i, "x"], table.loc[i, "y"], table.loc[i, "z"]))) + desc_radius for i in table.index])
 
-        center_of_mass = np.average([table['x'],table['y'],table['z']], axis=1, weights=table['weight'])
-        radius = max([np.linalg.norm(center_of_mass - np.array((table.loc[i,'x'],table.loc[i,'y'],table.loc[i,'z']))) for i in table.index])/2
+        return center_of_mass, radius
 
-        if radius<1 and 'Hydrophobic' in list(table.name):
-            radius=1
-        elif radius<0.5 and 'Hydrophobic' not in list(table.name):
-            radius=0.5
+    def __get_cluster_variance(table: pd.DataFrame, center_of_mass: np.ndarray):
+        """Compute the variance of the cluster points.
 
-        return center_of_mass,radius 
-    
+        Args:
+            table (pd.DataFrame): DataFrame containing the cluster points.
+            center_of_mass (np.ndarray): The center of mass of the cluster.
+
+        Returns:
+            float: The inertia of the cluster.
+        """
+        distances = np.linalg.norm(
+            table[["x", "y", "z"]].values - center_of_mass, axis=1
+        )
+        return np.mean(np.square(distances))
+
     def __save_pymol_cluster(table:pd.DataFrame,out_file:str='cluster.pse',cluster_color_map:dict={}):
         for point in table.index:
             cmd.pseudoatom(object=int(table.loc[point,'cluster']),resn=table.loc[point,'name'],
                                resi=point, chain='P', elem='PS',label=int(table.loc[point,'cluster']),
                                vdw=table.loc[point,'radius'], hetatm=1, color=table.loc[point,'color'],b=table.loc[point,'weight'],
-                           q=table.loc[point,'balance'],pos=[table.loc[point,'x'],table.loc[point,'y'],table.loc[point,'z']])
+                           q=table.loc[point,'variance'],pos=[table.loc[point,'x'],table.loc[point,'y'],table.loc[point,'z']])
 
             cmd.group(table.loc[point,'name'], '*')
             
@@ -362,32 +390,8 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
     Descriptors=table.groupby('name')
     index=1
     for group in Descriptors.groups:
-        linkage,matrix,descriptor_cluster=__compute_cluster(Descriptors.get_group(group))
+        linkage,matrix,descriptor_cluster=__compute_cluster(Descriptors.get_group(group), method)
         Links[group]={'matrix':matrix,'linkage':linkage,'table':descriptor_cluster}
-        
-        if save_data_per_descriptor==True:
-            
-            
-            
-            lut = dict(zip(descriptor_cluster.cluster.unique(), sns.color_palette('Set3',len(descriptor_cluster.cluster.unique()))))
-            row_colors = descriptor_cluster.cluster.map(lut).to_numpy()
-            
-            
-            ax=sns.clustermap (matrix,method='complete',figsize=(6,6),xticklabels=0, yticklabels=0,
-                               cmap=cmap_plots,cbar_kws=dict(label='Distance',shrink=1,orientation='vertical',spacing='uniform',pad=0.02),
-                               row_linkage=linkage, col_linkage=linkage, rasterized=True,row_colors=row_colors,tree_kws=dict(linewidths=1))
-            
-            x0, _y0, _w, _h = ax.cbar_pos
-            ax.ax_cbar.set_position([0.1, 0.8, _w/1, _h/1.2])
-            ax.ax_cbar.set_ylabel('Distance Å',fontsize=10,fontweight='bold')
-            ax.ax_cbar.tick_params(axis='y', length=3,width=1,labelsize=10)
-            
-            ax.savefig(f"{out_folder}/{group}_clusters.svg",dpi=300,bbox_inches="tight")
-            
-            __save_pymol_cluster(table=descriptor_cluster,out_file=f"{out_folder}/{group}_clusters.pse",cluster_color_map=lut)
-            
-        else:
-            pass
         
         clusters=descriptor_cluster.groupby('cluster')
         for cg in clusters.groups:
@@ -401,7 +405,37 @@ def compute_concensus_pharmacophore (table:pd.DataFrame, save_data_per_descripto
             Concensus.loc[index,'radius']=radius
             Concensus.loc[index,'color']=clus.loc[clus.index[0],'color']
             Concensus.loc[index,'weight']=int(len(clus.index))
-            Concensus.loc[index,'balance']=clus['balance'].sum()
+            Concensus.loc[index, 'variance'] = __get_cluster_variance(clus, center_of_mass)
             index=index+1
+            
+            # Aggregate Concensus to get one weight and variance per cluster
+            agg_data = Concensus.groupby('cluster')[['weight', 'variance']].first()
+
+            # Now map these to descriptor_cluster
+            descriptor_cluster['weight'] = descriptor_cluster['cluster'].map(agg_data['weight'])
+            descriptor_cluster['variance'] = descriptor_cluster['cluster'].map(agg_data['variance'])
+        
+        if save_data_per_descriptor==True:
+            
+            
+            lut = dict(zip(descriptor_cluster.cluster.unique(), sns.color_palette('Set3',len(descriptor_cluster.cluster.unique()))))
+            if linkage is not None:
+                row_colors = descriptor_cluster.cluster.map(lut).to_numpy()
+                
+                
+                ax=sns.clustermap (matrix,method='complete',figsize=(6,6),xticklabels=0, yticklabels=0,
+                                cmap=cmap_plots,cbar_kws=dict(label='Distance',shrink=1,orientation='vertical',spacing='uniform',pad=0.02),
+                                row_linkage=linkage, col_linkage=linkage, rasterized=True,row_colors=row_colors,tree_kws=dict(linewidths=1))
+                
+                x0, _y0, _w, _h = ax.cbar_pos
+                ax.ax_cbar.set_position([0.1, 0.8, _w/1, _h/1.2])
+                ax.ax_cbar.set_ylabel('Distance Å',fontsize=10,fontweight='bold')
+                ax.ax_cbar.tick_params(axis='y', length=3,width=1,labelsize=10)
+                
+                ax.savefig(f"{out_folder}/{group}_clusters.svg",dpi=300,bbox_inches="tight")
+            else:
+                print(f"Descriptor {group} has only 1 point, not plotting clustermap")
+            
+            __save_pymol_cluster(table=descriptor_cluster,out_file=f"{out_folder}/{group}_clusters.pse",cluster_color_map=lut)
     
     return Concensus, Links
