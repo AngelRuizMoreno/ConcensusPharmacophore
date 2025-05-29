@@ -45,8 +45,8 @@ pip install conphar
 
 If you use this software or its results in your research, publication, or project, please cite it as follows:
 
-> ConPhar: Tool for generation and analysis of concensus pharmacophore: [DOI: 10.5281/zenodo.8276506](https://zenodo.org/record/8276506)
-
+> [Consensus Pharmacophore Strategy For Identifying Novel SARS-Cov-2 Mpro Inhibitors from Large Chemical Libraries. Angel J. Ruiz-Moreno, Raziel Cedillo-González, Luis Cordova-Bahena, Zhiqiang An, José L. Medina-Franco, and Marco A. Velasco-Velázquez.Journal of Chemical Information and Modeling 2024 64 (6), 1984-1995.
+DOI: 10.1021/acs.jcim.3c01439](https://pubs.acs.org/doi/10.1021/acs.jcim.3c01439)
 
 If you use pharmer for your work you must cite:
 
@@ -91,7 +91,6 @@ This tool is under MIT license, see the LICENSE file for details.
 - This library works with pharmacophores generated with [pharmer](https://sourceforge.net/projects/pharmer/) and/or [pharmit](https://pharmit.csb.pitt.edu/). An executable version of pharmit is included in this library but works only for linux.
 
 Users can generate their pharmacophores and use this library for analysis. Check tutorials for more information.
-
 
 ## Disclaimer 
 
