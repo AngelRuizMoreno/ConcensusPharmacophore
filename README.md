@@ -59,11 +59,13 @@ If you use Pharmit in your work you must cite:
 ## Improves in the last version by Helle van den Maagdenberg
 
 - **Fixes**
+  
 Handle case where a descriptor group has only 1 point in compute_concensus_pharmacophore.__compute_cluster, by setting cluster to 1. Previously, an error would also occur with 2 points, but this is fixed by using the pairwise distance directly (see Changes).
 Don't divide by 2 in the radius calculation in compute_concensus_pharmacophore.__compute_center_of_mass_and_radius, as the distance from the furthest point to the center of mass already is the radius.
 Only keep alternate conformation A in fetch_structure. Previously, the alternate conformation target_chain was kept, but these are unrelated.
 
 - **Changes**
+
 Save fetched receptors to a separate folder pdb in fetch_structure
 Keep solvent and inorganic within the binding site in fetch_structure
 Add indenting to saved pharmacophores in save_pharmacophore_to_json
@@ -74,11 +76,11 @@ The radius calculation in compute_concensus_pharmacophore.__compute_center_of_ma
 Replace balance calculation by variance of the points within consensus clusters
 
 - **Additions**
+  
 Added optional argument target_file_type to fetch_structure to allow fetching mmcif files instead of pdb.
 Added optional argument remove to fetch_structure to supply additional residue names to be removed in the preprocessing
 Added optional argument feature_size to compute_concensus_pharmacophore to control the default radius per descriptor type
 Added optional argument method to compute_concensus_pharmacophore to also allow for different scipy clustering methods
-
 
 ## License
 
