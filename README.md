@@ -45,7 +45,7 @@ pip install conphar
 
 If you use this software or its results in your research, publication, or project, please cite it as follows:
 
-> [Consensus Pharmacophore Strategy For Identifying Novel SARS-Cov-2 Mpro Inhibitors from Large Chemical Libraries. Angel J. Ruiz-Moreno, Raziel Cedillo-González, Luis Cordova-Bahena, Zhiqiang An, José L. Medina-Franco, and Marco A. Velasco-Velázquez.Journal of Chemical Information and Modeling 2024 64 (6), 1984-1995.
+> [Consensus Pharmacophore Strategy For Identifying Novel SARS-Cov-2 Mpro Inhibitors from Large Chemical Libraries. Angel J. Ruiz-Moreno, Raziel Cedillo-González, Luis Cordova-Bahena, Zhiqiang An, José L. Medina-Franco, and Marco A. Velasco-Velázquez. Journal of Chemical Information and Modeling 2024 64 (6), 1984-1995.
 DOI: 10.1021/acs.jcim.3c01439](https://pubs.acs.org/doi/10.1021/acs.jcim.3c01439)
 
 If you use pharmer for your work you must cite:
