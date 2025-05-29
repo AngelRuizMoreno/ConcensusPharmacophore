@@ -56,7 +56,7 @@ If you use Pharmit in your work you must cite:
 
 > Sunseri, J., & Koes, D.R. (2016). Pharmit: interactive exploration of chemical space. Nucleic Acids Research, 44, W442 - W448.
 
-## Improves in the last version by Helle
+## Improves in the last version by Helle van den Maagdenberg
 
 - Overview
 
